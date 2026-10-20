@@ -3,7 +3,7 @@ import playgamaBridge from '@playgama/bridge/vite';
 
 export default defineConfig({
   base: './',
-  plugins: [playgamaBridge({ mode: 'local' })],
+  plugins: [playgamaBridge()],
   build: {
     target: 'esnext',
     assetsInlineLimit: 4096,

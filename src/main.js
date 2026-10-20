@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import bridge from '@playgama/bridge';
 import { GAME_WIDTH, GAME_HEIGHT, THEME } from './config/gameConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
@@ -17,6 +18,23 @@ const config = {
   scene: [BootScene, MenuScene, GameScene]
 };
 
-window.addEventListener('load', () => {
+// Ensure Playgama Bridge is initialized BEFORE Phaser starts
+const startApp = async () => {
+  try {
+    const b = window.bridge || bridge;
+    if (b && !b.isInitialized) {
+      await b.initialize();
+      console.log('[PlaygamaBridge] Initialized successfully. Platform:', b.platform?.id);
+    }
+    if (b && b.setGameLoadingProgress) {
+      b.setGameLoadingProgress(100);
+    }
+  } catch (err) {
+    console.warn('[PlaygamaBridge] Initialize fallback:', err);
+  }
+
+  // Launch the game
   new Phaser.Game(config);
-});
+};
+
+window.addEventListener('load', startApp);
