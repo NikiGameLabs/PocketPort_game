@@ -3,6 +3,7 @@ node_modules/
 
 # Production build
 dist/
+*.zip
 
 # Logs
 logs/

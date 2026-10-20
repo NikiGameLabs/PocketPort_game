@@ -333,10 +333,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   activateBoost() {
-    this.boostActive = true;
-    this.boostTimer = 15; // 15 seconds 2x boost
-    sounds.playBoost();
-    this.showFloatingText(this.player.x, this.player.y, '⚡ 2X GOLDEN CRANE BOOST ACTIVE!', '#fbbf24');
+    sdk.showRewardedAd(() => {
+      this.boostActive = true;
+      this.boostTimer = 15; // 15 seconds 2x boost
+      sounds.playBoost();
+      this.showFloatingText(this.player.x, this.player.y, '⚡ 2X GOLDEN CRANE BOOST ACTIVE!', '#fbbf24');
+    });
   }
 
   updateHUDValues() {
@@ -358,6 +360,7 @@ export class GameScene extends Phaser.Scene {
   handlePortCompletion() {
     this.isPortCompleted = true;
     sounds.playHorn();
+    sdk.showInterstitialAd();
 
     // Save progress: unlock next port
     const nextPort = Math.max(this.progress.unlockedPort || 1, this.portConfig.id + 1);

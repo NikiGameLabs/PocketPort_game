@@ -1,0 +1,22 @@
+{
+  "advertisement": {
+    "minimumDelayBetweenInterstitial": 60,
+    "interstitial": {
+      "placements": [
+        {
+          "id": "port_completed"
+        }
+      ]
+    },
+    "rewarded": {
+      "placements": [
+        {
+          "id": "speed_boost"
+        }
+      ]
+    }
+  },
+  "leaderboards": [],
+  "achievements": [],
+  "payments": []
+}
