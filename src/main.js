@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import bridge from '@playgama/bridge';
 import { GAME_WIDTH, GAME_HEIGHT, THEME } from './config/gameConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
@@ -11,6 +10,9 @@ const config = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   backgroundColor: THEME.waterDeep,
+  render: {
+    failIfMajorPerformanceCaveat: false,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -18,23 +20,15 @@ const config = {
   scene: [BootScene, MenuScene, GameScene]
 };
 
-// Ensure Playgama Bridge is initialized BEFORE Phaser starts
-const startApp = async () => {
-  try {
-    const b = window.bridge || bridge;
-    if (b && !b.isInitialized) {
-      await b.initialize();
-      console.log('[PlaygamaBridge] Initialized successfully. Platform:', b.platform?.id);
-    }
-    if (b && b.setGameLoadingProgress) {
-      b.setGameLoadingProgress(100);
-    }
-  } catch (err) {
-    console.warn('[PlaygamaBridge] Initialize fallback:', err);
-  }
-
-  // Launch the game
+const startGame = () => {
+  if (window.__pocketPortStarted) return;
+  window.__pocketPortStarted = true;
   new Phaser.Game(config);
 };
 
-window.addEventListener('load', startApp);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  startGame();
+} else {
+  window.addEventListener('load', startGame);
+  document.addEventListener('DOMContentLoaded', startGame);
+}

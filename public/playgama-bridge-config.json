@@ -1,4 +1,5 @@
 {
+  "platforms": {},
   "advertisement": {
     "minimumDelayBetweenInterstitial": 60,
     "interstitial": {
