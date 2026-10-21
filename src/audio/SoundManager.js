@@ -1,24 +1,42 @@
 class SoundManager {
   constructor() {
     this.ctx = null;
-    this.muted = localStorage.getItem('pocketport_muted') === 'true';
+    this.muted = false;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        this.muted = localStorage.getItem('pocketport_muted') === 'true';
+      }
+    } catch (e) {
+      // Handles sandboxed iframes without allow-same-origin
+      this.muted = false;
+    }
   }
 
   init() {
     if (!this.ctx && typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
+      } catch (e) {
+        console.warn('[SoundManager] AudioContext init prevented:', e);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try {
+        this.ctx.resume().catch(() => {});
+      } catch (e) {}
     }
   }
 
   toggleMute() {
     this.muted = !this.muted;
-    localStorage.setItem('pocketport_muted', this.muted);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('pocketport_muted', this.muted);
+      }
+    } catch (e) {}
     return this.muted;
   }
 

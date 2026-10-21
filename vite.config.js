@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
   base: './',
+  plugins: [viteSingleFile()],
   build: {
     target: 'esnext',
-    assetsInlineLimit: 4096,
-    chunkSizeWarningLimit: 2000,
+    assetsInlineLimit: 10000000,
+    chunkSizeWarningLimit: 5000,
   },
   server: {
     port: 5174,

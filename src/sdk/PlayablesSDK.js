@@ -2,21 +2,30 @@ import bridge from '@playgama/bridge';
 
 class PlayablesSDK {
   constructor() {
-    this.bridge = bridge;
+    this.bridge = (typeof window !== 'undefined' && window.bridge) ? window.bridge : bridge;
     this.isBridgeReady = false;
     this.firstFrameSent = false;
     this.gameReadySent = false;
+    this.memoryStore = {};
 
     this.initBridge();
   }
 
   async initBridge() {
     try {
-      await this.bridge.initialize();
+      const b = (typeof window !== 'undefined' && window.bridge) ? window.bridge : this.bridge;
+      if (b && !b.isInitialized) {
+        await b.initialize();
+      }
       this.isBridgeReady = true;
-      console.log('[PlaygamaBridge] Initialized successfully. Platform:', this.bridge.platform?.id);
+      console.log('[PlaygamaBridge] Initialized successfully. Platform:', b?.platform?.id);
+
+      // Report game ready
+      if (b?.platform?.sendMessage) {
+        b.platform.sendMessage('game_ready');
+      }
     } catch (err) {
-      console.warn('[PlaygamaBridge] Running in standalone/fallback mode:', err);
+      console.warn('[PlaygamaBridge] Running in fallback mode:', err);
     }
   }
 
@@ -25,7 +34,6 @@ class PlayablesSDK {
     this.firstFrameSent = true;
     console.log('[PlayablesSDK] firstFrameReady triggered');
 
-    // Direct YouTube Playables native hook if present
     if (typeof window !== 'undefined' && window.YouTubePlayables?.firstFrameReady) {
       window.YouTubePlayables.firstFrameReady();
     }
@@ -36,12 +44,16 @@ class PlayablesSDK {
     this.gameReadySent = true;
     console.log('[PlayablesSDK] gameReady triggered');
 
-    // Inform Playgama Bridge
-    if (this.bridge?.setGameLoadingProgress) {
-      this.bridge.setGameLoadingProgress(100);
+    const b = (typeof window !== 'undefined' && window.bridge) ? window.bridge : this.bridge;
+    if (b?.platform?.sendMessage) {
+      b.platform.sendMessage('game_ready');
+      console.log('[PlayablesSDK] Sent game_ready message to Bridge platform');
     }
 
-    // Direct YouTube Playables native hook if present
+    if (b?.setGameLoadingProgress) {
+      b.setGameLoadingProgress(100);
+    }
+
     if (typeof window !== 'undefined' && window.YouTubePlayables?.gameReady) {
       window.YouTubePlayables.gameReady();
     }
@@ -49,10 +61,10 @@ class PlayablesSDK {
 
   showRewardedAd(onRewarded, onError) {
     console.log('[PlayablesSDK] Requesting Rewarded Video Ad...');
+    const b = (typeof window !== 'undefined' && window.bridge) ? window.bridge : this.bridge;
 
-    if (this.bridge?.advertisement?.showRewarded) {
-      // Playgama Bridge Rewarded Ad
-      this.bridge.advertisement.showRewarded({
+    if (b?.advertisement?.showRewarded) {
+      b.advertisement.showRewarded({
         placement: 'speed_boost',
         onRewarded: () => {
           console.log('[PlayablesSDK] Rewarded Ad completed! Granting reward.');
@@ -60,13 +72,11 @@ class PlayablesSDK {
         },
         onError: (err) => {
           console.warn('[PlayablesSDK] Rewarded Ad error or cancelled:', err);
-          // In development/test mode, still grant reward so gameplay isn't blocked
           if (onRewarded) onRewarded();
           if (onError) onError(err);
         }
       });
     } else {
-      // Local fallback simulation
       setTimeout(() => {
         if (onRewarded) onRewarded();
       }, 500);
@@ -75,9 +85,10 @@ class PlayablesSDK {
 
   showInterstitialAd() {
     console.log('[PlayablesSDK] Requesting Interstitial Ad...');
+    const b = (typeof window !== 'undefined' && window.bridge) ? window.bridge : this.bridge;
 
-    if (this.bridge?.advertisement?.showInterstitial) {
-      this.bridge.advertisement.showInterstitial({
+    if (b?.advertisement?.showInterstitial) {
+      b.advertisement.showInterstitial({
         placement: 'port_completed'
       });
     }
@@ -85,24 +96,48 @@ class PlayablesSDK {
 
   saveGameProgress(data) {
     try {
-      localStorage.setItem('pocketport_save_data', JSON.stringify(data));
-      if (this.bridge?.storage?.set) {
-        this.bridge.storage.set('pocketport_save_data', JSON.stringify(data));
+      this.memoryStore['pocketport_save_data'] = JSON.stringify(data);
+    } catch (e) {}
+
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('pocketport_save_data', JSON.stringify(data));
       }
     } catch (e) {
-      console.warn('[PlayablesSDK] Save error:', e);
+      // Sandboxed iframe localStorage restricted
+    }
+
+    try {
+      const b = (typeof window !== 'undefined' && window.bridge) ? window.bridge : this.bridge;
+      if (b?.storage?.set) {
+        b.storage.set('pocketport_save_data', JSON.stringify(data));
+      }
+    } catch (e) {
+      console.warn('[PlayablesSDK] Bridge save error:', e);
     }
   }
 
   loadGameProgress() {
+    // 1. In-memory check
+    if (this.memoryStore['pocketport_save_data']) {
+      try {
+        return JSON.parse(this.memoryStore['pocketport_save_data']);
+      } catch (e) {}
+    }
+
+    // 2. localStorage check
     try {
-      const stored = localStorage.getItem('pocketport_save_data');
-      if (stored) {
-        return JSON.parse(stored);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = localStorage.getItem('pocketport_save_data');
+        if (stored) {
+          this.memoryStore['pocketport_save_data'] = stored;
+          return JSON.parse(stored);
+        }
       }
     } catch (e) {
-      console.warn('[PlayablesSDK] Load error:', e);
+      // Sandboxed iframe localStorage restricted
     }
+
     return {
       cash: 100,
       unlockedPort: 1,
@@ -124,7 +159,6 @@ class PlayablesSDK {
       }
     });
 
-    // Native YouTube Playables handlers
     if (window.YouTubePlayables?.onPause) {
       window.YouTubePlayables.onPause(() => { if (onPause) onPause(); });
     }
